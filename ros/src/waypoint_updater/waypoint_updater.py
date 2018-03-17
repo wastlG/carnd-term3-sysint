@@ -32,7 +32,7 @@ class WaypointUpdater(object):
     def __init__(self):
         rospy.init_node('waypoint_updater')
 
-        rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
+        rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb, queue_size=1)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
         rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
         rospy.Subscriber('/obstacle_waypoint', Int32, self.obstacle_cb)
@@ -76,6 +76,9 @@ class WaypointUpdater(object):
         wp_ahead = self.get_waypoint_ahead()
         for wp_offset in range(0, LOOKAHEAD_WPS):
             next_waypoint = wp_ahead + wp_offset
+            # Handle circular test scenarios (like the used simulator)
+            if (next_waypoint >= len(self.current_waypoints.waypoints)):
+                next_waypoint = next_waypoint - len(self.current_waypoints.waypoints)
             lane_waypoints.waypoints.append(self.current_waypoints.waypoints[next_waypoint])
             # Saturate velocity to the maximum allowed value
             #if (self.get_waypoint_velocity(lane_waypoints.waypoints[wp_offset]) > self.maximum_velocity):
@@ -111,7 +114,10 @@ class WaypointUpdater(object):
         # Check, if the signs of the heading from pose to the waypoint and the current heading at the pose have the same
         # sign or not. If they don't have the same sign, the next waypoint ahead, is the next of the nearest waypoint
         if (math.fabs(heading_wp_to_pose + rpy_current_pose[2]) != math.fabs(heading_wp_to_pose) + math.fabs(rpy_current_pose[2])):
-          waypoint_ahead = waypoint_ahead + 1
+            waypoint_ahead = waypoint_ahead + 1
+            # Handle circular test scenarios (like the used simulator)
+            if (waypoint_ahead >= len(self.current_waypoints.waypoints)):
+                waypoint_ahead = waypoint_ahead - len(self.current_waypoints.waypoints)
         return waypoint_ahead
     
     def is_waypoint_in_lookahead_waypoints(self, wp, wp_of_interest):
