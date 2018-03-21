@@ -57,7 +57,7 @@ class WaypointUpdater(object):
         self.update_waypoints()
 
     def twist_cb(self, msg):
-        self.current_velocity = msg.twist.twist.linear.x
+        self.current_velocity = msg.twist.linear.x
 
     def waypoints_cb(self, waypoints):
         self.current_waypoints = waypoints
@@ -152,8 +152,8 @@ class WaypointUpdater(object):
             if (self.is_waypoint_in_lookahead_waypoints(waypoint_ahead, self.latest_traffic_waypoint) == True):
                 next_stop_waypoint = self.latest_traffic_waypoint
                 dist_to_next_stop_waypoint = self.distance(self.current_waypoints.waypoints, waypoint_ahead, next_stop_waypoint)
-        if (self.obstacle_waypoint != None):
-            if (self.is_waypoint_in_lookahead_waypoints(waypoint_ahead, self.latest_traffic_waypoint) == True):
+        if (self.latest_obstacle_waypoint != None):
+            if (self.is_waypoint_in_lookahead_waypoints(waypoint_ahead, self.latest_obstacle_waypoint) == True):
                 dist = self.distance(self.current_waypoints.waypoints, waypoint_ahead, self.latest_obstacle_waypoint)
                 if (dist < dist_to_next_stop_waypoint):
                     next_stop_waypoint = self.latest_obstacle_waypoint
