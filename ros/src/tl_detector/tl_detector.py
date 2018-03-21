@@ -101,7 +101,45 @@ class TLDetector(object):
 
         """
         #TODO implement
-        return 0
+        # None Checker
+        if self.waypoints is None:
+            return
+        
+        """Closest pair of points problem
+            (https://en.wikipedia.org/wiki/Closest_pair_of_points_problem)
+            
+        Brute-force algorithm
+            
+        minDist = infinity
+        for i = 1 to length(P) - 1
+            for j = i + 1 to length(P)
+            let p = P[i], q = P[j]
+                if dist(p, q) < minDist:
+                    minDist = dist(p, q)
+                    closestPair = (p, q)
+        return closestPair
+        """
+        
+        # Initialization
+        min_distance = 10000
+        min_index = None
+        
+        pos_x = pose.position.x
+        pos_y = pose.position.y
+        
+        # For loop for checking all the waypoints
+        for i, waypoint in enumerate(self.waypoints):
+            wp_x = waypoint.pose.pose.position.x
+            wp_y = waypoint.pose.pose.position.y
+            distance = math.sqrt((pos_x - wp_x)**2 + (pos_y - wp_y)**2)
+            if (distance < min_distance):
+                min_lndex = i
+                min_distance = distance
+
+        # returns the index of the closest waypoint
+        return min_index
+
+        # return 0
 
     def get_light_state(self, light):
         """Determines the current color of the traffic light
@@ -139,12 +177,50 @@ class TLDetector(object):
             car_position = self.get_closest_waypoint(self.pose.pose)
 
         #TODO find the closest visible traffic light (if one exists)
+        # Adding else in the above
+        else:
+            return -1, TrafficLight.UNKNOWN
 
-        if light:
+        # Initialization additional
+        closest_light_wp = None
+        closest_light_stop_wp = None
+        dist_to_light = 10000
+
+        # For loop for checking all the stop_line_positions
+        for light_stop_position in stop_line_positions:
+            # Using Pose() format to apply function get_closest_waypoint(self, pose)
+            light_stop_pose = Pose()
+            light_stop_pose.position.x = light_stop_position[0]
+            light_stop_pose.position.y = light_stop_position[1]
+            light_stop_wp = self.get_closest_waypoint(light_stop_pose)
+            
+            if light_stop_wp >= car_position :
+                #Checking in case of the first light
+                if closest_light_stop_wp is None:
+                    closest_light_stop_wp = light_stop_wp
+                    light = light_stop_pose
+                # Assigning value when closer found
+                elif light_stop_wp < closest_light_stop_wp:
+                    closest_light_stop_wp = light_stop_wp
+                    light = light_stop_pose
+
+        # Caluclating distance from the car to the closest light
+        if ((car_position is not None) and (closest_light_stop_wp is not None)):
+            dist_to_light = abs(car_position - closest_light_stop_wp)
+     
+
+        # Checking the status of the traffic light within the certain distance (set 100)
+        if light and dist_to_light < 100:
             state = self.get_light_state(light)
-            return light_wp, state
-        self.waypoints = None
+            return closest_light_stop_wp, state
+        
         return -1, TrafficLight.UNKNOWN
+
+        # if light:
+        #     state = self.get_light_state(light)
+        #     return light_wp, state
+        # self.waypoints = None
+        # return -1, TrafficLight.UNKNOWN
 
 if __name__ == '__main__':
     try:
