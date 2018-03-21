@@ -24,7 +24,7 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS         = 200    # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS         = 200    # Number of waypoints we will publish
 UPDATE_RATE           = 20     # The rate in Hz
 
 
@@ -33,14 +33,15 @@ class WaypointUpdater(object):
         rospy.init_node('waypoint_updater')
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb, queue_size=1)
+        rospy.Subscriber('/current_velocity', TwistStamped, self.twist_cb, queue_size=1)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
         rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
         rospy.Subscriber('/obstacle_waypoint', Int32, self.obstacle_cb)
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
-
-        # TODO: Add other member variables you need below
+        
         self.current_pose = None
+        self.current_velocity = None
         self.current_waypoints = None
         self.current_traffic_waypoint = None
         self.latest_traffic_waypoint = None
@@ -52,6 +53,9 @@ class WaypointUpdater(object):
         self.current_pose = PoseStamped()
         self.current_pose = msg.pose
         self.update_waypoints()
+
+    def twist_cb(self, msg):
+        self.current_velocity = msg.twist.twist.linear.x
 
     def waypoints_cb(self, waypoints):
         self.current_waypoints = waypoints
@@ -76,7 +80,7 @@ class WaypointUpdater(object):
         wp_ahead = self.get_waypoint_ahead()
         for wp_offset in range(0, LOOKAHEAD_WPS):
             next_waypoint = wp_ahead + wp_offset
-            # Handle circular test scenarios (like the used simulator)
+            # Handle circular scenarios (like the used simulator)
             if (next_waypoint >= len(self.current_waypoints.waypoints)):
                 next_waypoint = next_waypoint - len(self.current_waypoints.waypoints)
             lane_waypoints.waypoints.append(self.current_waypoints.waypoints[next_waypoint])
@@ -84,15 +88,9 @@ class WaypointUpdater(object):
             #if (self.get_waypoint_velocity(lane_waypoints.waypoints[wp_offset]) > self.maximum_velocity):
             #  self.set_waypoint_velocity(lane_waypoints, wp_offset, self.maximum_velocity)
         
-        #if self.latest_traffic_waypoint != None:
-        #    if self.is_waypoint_in_lookahead_waypoints(wp_ahead, self.latest_traffic_waypoint):
-        #        self.calculate_deceleration_ramp(lane_waypoints)
-        #if self.latest_obstacle_waypoint != None:
-        #    if self.is_waypoint_in_lookahead_waypoints(wp_ahead, latest_obstacle_waypoint):
-        #        self.calculate_deceleration_ramp(lane_waypoints)
-            # TODO: Implement
-        
-        # TODO: Implement
+        wp_to_stop = self.get_next_stop_waypoint(wp_ahead)
+        if (wp_to_stop != -1):
+            lane_waypoints = self.apply_velocities(lane_waypoints, wp_ahead, wp_to_stop)
         
         self.final_waypoints_pub.publish(lane_waypoints)
     
@@ -115,20 +113,43 @@ class WaypointUpdater(object):
         # sign or not. If they don't have the same sign, the next waypoint ahead, is the next of the nearest waypoint
         if (math.fabs(heading_wp_to_pose + rpy_current_pose[2]) != math.fabs(heading_wp_to_pose) + math.fabs(rpy_current_pose[2])):
             waypoint_ahead = waypoint_ahead + 1
-            # Handle circular test scenarios (like the used simulator)
+            # Handle circular scenarios (like the used simulator)
             if (waypoint_ahead >= len(self.current_waypoints.waypoints)):
                 waypoint_ahead = waypoint_ahead - len(self.current_waypoints.waypoints)
         return waypoint_ahead
     
     def is_waypoint_in_lookahead_waypoints(self, wp, wp_of_interest):
-        if wp_of_interest >= wp and wp_of_interest <= wp + LOOKAHEAD_WPS:
+        if (wp_of_interest >= wp and wp_of_interest <= wp + LOOKAHEAD_WPS):
             return True
         return False
     
-    def calculate_deceleration_ramp(self):
-        # TODO: Implement
-        pass
+    def apply_velocities(self, lane_waypoints, waypoint_ahead, waypoint_to_stop):
+	for wp_offset in range(0, LOOKAHEAD_WPS):
+            next_waypoint = wp_ahead + wp_offset
+            # Handle circular scenarios (like the used simulator)
+            if (next_waypoint >= len(self.current_waypoints.waypoints)):
+                next_waypoint = next_waypoint - len(self.current_waypoints.waypoints)
+            
+            if next_waypoint >= waypoint_to_stop:          # Set all points up from the point to stop, to a velocity of zero
+               lane_waypoints.waypoints[wp_offset].twist.twist.linear.x = 0.0
+            else:                                          # Add a deceleration ramp
+               # TODO: Implement
     
+    def get_next_stop_waypoint(self, waypoint_ahead):
+        next_stop_waypoint = -1
+        dist_to_next_stop_waypoint = sys.float_info.max
+        if (self.latest_traffic_waypoint != None):
+            if (self.is_waypoint_in_lookahead_waypoints(waypoint_ahead, self.latest_traffic_waypoint) == True):
+                next_stop_waypoint = self.latest_traffic_waypoint
+                dist_to_next_stop_waypoint = self.distance(self.current_waypoints.waypoints, waypoint_ahead, next_stop_waypoint)
+        if (self.obstacle_waypoint != None):
+            if (self.is_waypoint_in_lookahead_waypoints(waypoint_ahead, self.latest_traffic_waypoint) == True):
+                dist = self.distance(self.current_waypoints.waypoints, waypoint_ahead, self.latest_obstacle_waypoint)
+                if (dist < dist_to_next_stop_waypoint):
+                    next_stop_waypoint = self.latest_obstacle_waypoint
+                    dist_to_next_stop_waypoint = dist
+        return next_stop_waypoint
+
     def get_maximum_velocity(self):
       # Convert from km/h to m/s - because m/s is used in ROS standard unit for velocities
       max_velocity_ms = rospy.get_param('/waypoint_loader/velocity') / 3.6
