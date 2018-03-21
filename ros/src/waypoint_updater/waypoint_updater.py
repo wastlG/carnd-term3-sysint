@@ -27,6 +27,8 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 LOOKAHEAD_WPS         = 200    # Number of waypoints we will publish
 UPDATE_RATE           = 20     # The rate in Hz
 
+MAX_DECELERATION      = 10.0
+
 
 class WaypointUpdater(object):
     def __init__(self):
@@ -124,16 +126,24 @@ class WaypointUpdater(object):
         return False
     
     def apply_velocities(self, lane_waypoints, waypoint_ahead, waypoint_to_stop):
+	velocity = self.current_velocity
 	for wp_offset in range(0, LOOKAHEAD_WPS):
-            next_waypoint = wp_ahead + wp_offset
+            next_waypoint = waypoint_ahead + wp_offset
             # Handle circular scenarios (like the used simulator)
             if (next_waypoint >= len(self.current_waypoints.waypoints)):
                 next_waypoint = next_waypoint - len(self.current_waypoints.waypoints)
             
-            if next_waypoint >= waypoint_to_stop:          # Set all points up from the point to stop, to a velocity of zero
-               lane_waypoints.waypoints[wp_offset].twist.twist.linear.x = 0.0
+            if (next_waypoint >= waypoint_to_stop):          # Set all points up from the point to stop, to a velocity of zero
+                lane_waypoints.waypoints[wp_offset].twist.twist.linear.x = 0.0
             else:                                          # Add a deceleration ramp
-               # TODO: Implement
+		# We want to stop 5 meters in front of the traffic-/obstacle-waypoint
+                dist_to_stop_point = self.distance(self.current_waypoints.waypoints, waypoint_ahead, waypoint_to_stop) - 5.0
+                decelaration_required = self.current_velocity / (2.0*dist_to_stop_point)      # Calculates the absolute value
+              	dist = self.distance(self.current_waypoints.waypoints, waypoint_ahead, next_waypoint)
+		velocity = max(0.0, velocity-math.sqrt(2.0*dist*deceleration_required))
+                if (velocity < 0.5):
+                    velocity = 0.0
+                lane_waypoints.waypoints[wp_offset].twist.twist.linear.x = velocity
     
     def get_next_stop_waypoint(self, waypoint_ahead):
         next_stop_waypoint = -1
