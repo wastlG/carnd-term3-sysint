@@ -24,7 +24,7 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS         = 200    # Number of waypoints we will publish
+LOOKAHEAD_WPS         = 125    # Number of waypoints we will publish
 UPDATE_RATE           = 20     # The rate in Hz
 
 MAX_DECELERATION      = 10.0
@@ -113,7 +113,8 @@ class WaypointUpdater(object):
         rpy_current_pose = tf.transformations.euler_from_quaternion((self.current_pose.orientation.x, self.current_pose.orientation.y, self.current_pose.orientation.z, self.current_pose.orientation.w))
         # Check, if the signs of the heading from pose to the waypoint and the current heading at the pose have the same
         # sign or not. If they don't have the same sign, the next waypoint ahead, is the next of the nearest waypoint
-        if (math.fabs(heading_wp_to_pose + rpy_current_pose[2]) != math.fabs(heading_wp_to_pose) + math.fabs(rpy_current_pose[2])):
+        #if (math.fabs(heading_wp_to_pose + rpy_current_pose[2]) != math.fabs(heading_wp_to_pose) + math.fabs(rpy_current_pose[2])):
+        if (math.fabs(rpy_current_pose[2]-heading_wp_to_pose) > math.pi/4.0):
             waypoint_ahead = waypoint_ahead + 1
             # Handle circular scenarios (like the used simulator)
             if (waypoint_ahead >= len(self.current_waypoints.waypoints)):
