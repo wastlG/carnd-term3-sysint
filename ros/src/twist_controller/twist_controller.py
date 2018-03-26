@@ -39,10 +39,9 @@ class Controller(object):
         
         if dbw_enabled:
             #steer = target_angular_velocity * self.steer_ratio
-            steer = self.steering_controller.get_steering(target_linear_velocity, target_angular_velocity, 
-                                                          current_linear_velocity)
+            steer = self.steering_controller.get_steering(target_linear_velocity, target_angular_velocity, current_linear_velocity)
             velocity_error = target_linear_velocity - current_linear_velocity
-            throttle = self.pid.step(velocity_error, self.delta_t) # [m/s²]
+            throttle = self.pid.step(velocity_error, self.delta_t) # [m/s^2]
             if throttle < 0.:
                 #brake = -throttle
                 # maybe its better to calculate the deceleration as "brake torque"
