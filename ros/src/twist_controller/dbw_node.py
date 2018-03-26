@@ -55,7 +55,7 @@ class DBWNode(object):
 
         # TODO: Create `Controller` object
         self.controller = Controller(vehicle_mass, brake_deadband, decel_limit, accel_limit, 
-                                     wheel_radius, wheel_base, steer_ratio, max_steer_angle)
+                                     wheel_radius, wheel_base, steer_ratio, max_steer_angle, max_lat_accel)
         
         # create some member variables
         self.current_angular_velocity = 0.
