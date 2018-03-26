@@ -35,7 +35,7 @@ class Controller(object):
         if dbw_enabled:
             steer = target_angular_velocity * self.steer_ratio
             velocity_error = target_linear_velocity - current_linear_velocity
-            throttle = self.pid.control(velocity_error, self.delta_t)
+            throttle = self.pid.step(velocity_error, self.delta_t)
             if throttle < 0.:
                 brake = -throttle
                 throttle = 0.
