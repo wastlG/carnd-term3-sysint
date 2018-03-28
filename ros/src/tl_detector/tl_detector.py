@@ -41,7 +41,7 @@ class TLDetector(object):
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
 
         self.bridge = CvBridge()
-        self.light_classifier = TLClassifier()
+        self.light_classifier = TLClassifier(False)
         self.listener = tf.TransformListener()
 
         self.state = TrafficLight.UNKNOWN
@@ -216,11 +216,11 @@ class TLDetector(object):
         
         return -1, TrafficLight.UNKNOWN
 
-        # if light:
-        #     state = self.get_light_state(light)
-        #     return light_wp, state
-        # self.waypoints = None
-        # return -1, TrafficLight.UNKNOWN
+        if light:
+            state = self.get_light_state(light)
+            return light_wp, state
+        self.waypoints = None
+        return -1, TrafficLight.UNKNOWN
 
 if __name__ == '__main__':
     try:
