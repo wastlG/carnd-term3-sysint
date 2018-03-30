@@ -64,6 +64,7 @@ class WaypointUpdater(object):
 
     def traffic_cb(self, msg):
         self.latest_traffic_waypoint = msg.data
+	rospy.loginfo("Updated traffic_waypoint to %d", self.latest_traffic_waypoint)
         self.update_waypoints()
 
     def obstacle_cb(self, msg):
@@ -139,21 +140,24 @@ class WaypointUpdater(object):
             else:                                          # Add a deceleration ramp
 		# We want to stop 5 meters in front of the traffic-/obstacle-waypoint
                 dist_to_stop_point = self.distance(self.current_waypoints.waypoints, waypoint_ahead, waypoint_to_stop) - 5.0
-                decelaration_required = self.current_velocity / (2.0*dist_to_stop_point)      # Calculates the absolute value
+                decelaration_required = 0.0
+		if (dist_to_stop_point > 1.0):
+                    decelaration_required = self.current_velocity / (2.0*dist_to_stop_point)      # Calculates the absolute value
               	dist = self.distance(self.current_waypoints.waypoints, waypoint_ahead, next_waypoint)
-		velocity = max(0.0, velocity-math.sqrt(2.0*dist*deceleration_required))
+		velocity = max(0.0, velocity-math.sqrt(2.0*dist*decelaration_required))
                 if (velocity < 0.5):
                     velocity = 0.0
                 lane_waypoints.waypoints[wp_offset].twist.twist.linear.x = velocity
+        return lane_waypoints
     
     def get_next_stop_waypoint(self, waypoint_ahead):
         next_stop_waypoint = -1
         dist_to_next_stop_waypoint = sys.float_info.max
-        if (self.latest_traffic_waypoint != None):
+        if (self.latest_traffic_waypoint != None and self.latest_traffic_waypoint != -1):
             if (self.is_waypoint_in_lookahead_waypoints(waypoint_ahead, self.latest_traffic_waypoint) == True):
                 next_stop_waypoint = self.latest_traffic_waypoint
                 dist_to_next_stop_waypoint = self.distance(self.current_waypoints.waypoints, waypoint_ahead, next_stop_waypoint)
-        if (self.latest_obstacle_waypoint != None):
+        if (self.latest_obstacle_waypoint != None and self.latest_obstacle_waypoint != -1):
             if (self.is_waypoint_in_lookahead_waypoints(waypoint_ahead, self.latest_obstacle_waypoint) == True):
                 dist = self.distance(self.current_waypoints.waypoints, waypoint_ahead, self.latest_obstacle_waypoint)
                 if (dist < dist_to_next_stop_waypoint):
