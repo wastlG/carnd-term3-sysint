@@ -119,29 +119,9 @@ class WaypointUpdater(object):
                     waypoint_to_append.twist.twist.linear.x = velocity
                 else:
                     waypoint_to_append.twist.twist.linear.x = 0.0
-                #if (next_waypoint >= wp_to_stop or velocity < 1.0):          # Set all points up from the point to stop, to a velocity of zero
-                #    waypoint_to_append.twist.twist.linear.x = 0.0
-                #else:                                          # Add a deceleration ramp
-		#    # We want to stop 5 meters in front of the traffic-/obstacle-waypoint
-                #    dist_to_stop_point = self.distance(self.current_waypoints.waypoints, wp_ahead, wp_to_stop) - 5.0
-		#    if (dist_to_stop_point > 1.0):
-                #        decelaration_required = self.current_velocity / (2.0*dist_to_stop_point)      # Calculates the absolute value
-              	#        dist = self.distance(self.current_waypoints.waypoints, wp_ahead, next_waypoint)
-		#        velocity = max(0.0, velocity-math.sqrt(2.0*dist*decelaration_required))
-                #        if (velocity < 0.5):
-                #            velocity = 0.0
-                #    else:
-                #        velocity = 0.0
-                #    waypoint_to_append.twist.twist.linear.x = velocity
-                rospy.loginfo("Velocity at waypoint %d is %.3f", next_waypoint, waypoint_to_append.twist.twist.linear.x)
+                #rospy.loginfo("Velocity at waypoint %d is %.3f", next_waypoint, waypoint_to_append.twist.twist.linear.x)
             
             lane_waypoints.waypoints.append(waypoint_to_append)
-        
-        #final_lane_waypoints = None
-        #if (wp_to_stop != -1):
-        #    final_lane_waypoints = self.apply_velocities(lane_waypoints, wp_ahead, wp_to_stop)
-        #else:
-        #    final_lane_waypoints = deepcopy(lane_waypoints)
         
         self.final_waypoints_pub.publish(lane_waypoints)
     
