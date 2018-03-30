@@ -8,6 +8,7 @@ from std_msgs.msg import Int32
 
 import sys
 import math
+from copy import deepcopy
 
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
@@ -24,7 +25,7 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS         = 125    # Number of waypoints we will publish
+LOOKAHEAD_WPS         = 100    # Number of waypoints we will publish
 UPDATE_RATE           = 20     # The rate in Hz
 
 MAX_DECELERATION      = 10.0
@@ -76,24 +77,71 @@ class WaypointUpdater(object):
             rospy.logwarn("Waypoints or pose not available.")
             return
         
+        velocity = self.current_velocity
+        
         lane_waypoints = Lane()
         lane_waypoints.header.stamp = rospy.Time.now()
         lane_waypoints.header.frame_id = '/world'
         
         wp_ahead = self.get_waypoint_ahead()
+        wp_to_stop = self.get_next_stop_waypoint(wp_ahead)
+        
+        max_dv = max(0.5, self.maximum_velocity / (LOOKAHEAD_WPS-10))    # Maybe helpful for high maximum velocities
+        
         for wp_offset in range(0, LOOKAHEAD_WPS):
             next_waypoint = wp_ahead + wp_offset
             # Handle circular scenarios (like the used simulator)
             if (next_waypoint >= len(self.current_waypoints.waypoints)):
                 next_waypoint = next_waypoint - len(self.current_waypoints.waypoints)
-            lane_waypoints.waypoints.append(self.current_waypoints.waypoints[next_waypoint])
-            # Saturate velocity to the maximum allowed value
-            #if (self.get_waypoint_velocity(lane_waypoints.waypoints[wp_offset]) > self.maximum_velocity):
-            #  self.set_waypoint_velocity(lane_waypoints, wp_offset, self.maximum_velocity)
+            
+            #lane_waypoints.waypoints.append(deepcopy(self.current_waypoints.waypoints[next_waypoint]))
+            waypoint_to_append = Waypoint()
+            waypoint_to_append.pose.pose.position.x = self.current_waypoints.waypoints[next_waypoint].pose.pose.position.x
+            waypoint_to_append.pose.pose.position.y = self.current_waypoints.waypoints[next_waypoint].pose.pose.position.y
+            waypoint_to_append.pose.pose.position.z = self.current_waypoints.waypoints[next_waypoint].pose.pose.position.z
+            waypoint_to_append.pose.pose.orientation.x = self.current_waypoints.waypoints[next_waypoint].pose.pose.orientation.x
+            waypoint_to_append.pose.pose.orientation.y = self.current_waypoints.waypoints[next_waypoint].pose.pose.orientation.y
+            waypoint_to_append.pose.pose.orientation.z = self.current_waypoints.waypoints[next_waypoint].pose.pose.orientation.z
+            waypoint_to_append.pose.pose.orientation.w = self.current_waypoints.waypoints[next_waypoint].pose.pose.orientation.w
+            waypoint_to_append.twist.twist.linear.x = self.current_waypoints.waypoints[next_waypoint].twist.twist.linear.x
+            waypoint_to_append.twist.twist.linear.y = self.current_waypoints.waypoints[next_waypoint].twist.twist.linear.y
+            waypoint_to_append.twist.twist.linear.z = self.current_waypoints.waypoints[next_waypoint].twist.twist.linear.z
+            waypoint_to_append.twist.twist.angular.x = self.current_waypoints.waypoints[next_waypoint].twist.twist.angular.x
+            waypoint_to_append.twist.twist.angular.y = self.current_waypoints.waypoints[next_waypoint].twist.twist.angular.y
+            waypoint_to_append.twist.twist.angular.z = self.current_waypoints.waypoints[next_waypoint].twist.twist.angular.z
+
+            # Apply deceleration of required
+            if (wp_to_stop != -1):
+                dist_to_stop_point = self.distance(self.current_waypoints.waypoints, wp_ahead, wp_to_stop)
+                if (dist_to_stop_point > 5.0):
+                    velocity = velocity - max_dv
+                    velocity = max(0.0, velocity)
+                    waypoint_to_append.twist.twist.linear.x = velocity
+                else:
+                    waypoint_to_append.twist.twist.linear.x = 0.0
+                #if (next_waypoint >= wp_to_stop or velocity < 1.0):          # Set all points up from the point to stop, to a velocity of zero
+                #    waypoint_to_append.twist.twist.linear.x = 0.0
+                #else:                                          # Add a deceleration ramp
+		#    # We want to stop 5 meters in front of the traffic-/obstacle-waypoint
+                #    dist_to_stop_point = self.distance(self.current_waypoints.waypoints, wp_ahead, wp_to_stop) - 5.0
+		#    if (dist_to_stop_point > 1.0):
+                #        decelaration_required = self.current_velocity / (2.0*dist_to_stop_point)      # Calculates the absolute value
+              	#        dist = self.distance(self.current_waypoints.waypoints, wp_ahead, next_waypoint)
+		#        velocity = max(0.0, velocity-math.sqrt(2.0*dist*decelaration_required))
+                #        if (velocity < 0.5):
+                #            velocity = 0.0
+                #    else:
+                #        velocity = 0.0
+                #    waypoint_to_append.twist.twist.linear.x = velocity
+                rospy.loginfo("Velocity at waypoint %d is %.3f", next_waypoint, waypoint_to_append.twist.twist.linear.x)
+            
+            lane_waypoints.waypoints.append(waypoint_to_append)
         
-        wp_to_stop = self.get_next_stop_waypoint(wp_ahead)
-        if (wp_to_stop != -1):
-            lane_waypoints = self.apply_velocities(lane_waypoints, wp_ahead, wp_to_stop)
+        #final_lane_waypoints = None
+        #if (wp_to_stop != -1):
+        #    final_lane_waypoints = self.apply_velocities(lane_waypoints, wp_ahead, wp_to_stop)
+        #else:
+        #    final_lane_waypoints = deepcopy(lane_waypoints)
         
         self.final_waypoints_pub.publish(lane_waypoints)
     
@@ -123,6 +171,8 @@ class WaypointUpdater(object):
         return waypoint_ahead
     
     def is_waypoint_in_lookahead_waypoints(self, wp, wp_of_interest):
+        if (wp_of_interest == -1):
+            return False
         if (wp_of_interest >= wp and wp_of_interest <= wp + LOOKAHEAD_WPS):
             return True
         return False
@@ -148,6 +198,7 @@ class WaypointUpdater(object):
                 if (velocity < 0.5):
                     velocity = 0.0
                 lane_waypoints.waypoints[wp_offset].twist.twist.linear.x = velocity
+            rospy.loginfo("Set the following velocity: %.3f for waypoint %d", velocity, next_waypoint)
         return lane_waypoints
     
     def get_next_stop_waypoint(self, waypoint_ahead):
