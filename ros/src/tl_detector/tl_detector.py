@@ -10,6 +10,7 @@ from light_classification.tl_classifier import TLClassifier
 import tf
 import cv2
 import yaml
+import math
 
 STATE_COUNT_THRESHOLD = 3
 
@@ -128,7 +129,9 @@ class TLDetector(object):
         pos_y = pose.position.y
         
         # For loop for checking all the waypoints
-        for i, waypoint in enumerate(self.waypoints):
+        #for i, waypoint in enumerate(self.waypoints):
+        for i in range(0, len(self.waypoints.waypoints)):
+            waypoint = self.waypoints.waypoint[i]
             wp_x = waypoint.pose.pose.position.x
             wp_y = waypoint.pose.pose.position.y
             distance = math.sqrt((pos_x - wp_x)**2 + (pos_y - wp_y)**2)
