@@ -65,7 +65,6 @@ class WaypointUpdater(object):
 
     def traffic_cb(self, msg):
         self.latest_traffic_waypoint = msg.data
-	rospy.loginfo("Updated traffic_waypoint to %d", self.latest_traffic_waypoint)
         self.update_waypoints()
 
     def obstacle_cb(self, msg):
