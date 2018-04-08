@@ -123,7 +123,7 @@ class TLDetector(object):
         
         # Initialization
         min_distance = 10000
-        min_index = None
+        min_index = 0
         
         pos_x = pose.position.x
         pos_y = pose.position.y
@@ -135,7 +135,7 @@ class TLDetector(object):
             wp_y = waypoint.pose.pose.position.y
             distance = math.sqrt((pos_x - wp_x)**2 + (pos_y - wp_y)**2)
             if (distance < min_distance):
-                min_lndex = i
+                min_index = i
                 min_distance = distance
 
         # returns the index of the closest waypoint
@@ -207,12 +207,12 @@ class TLDetector(object):
                     light = light_stop_pose
 
         # Caluclating distance from the car to the closest light
-        if ((car_position is not None) and (closest_light_stop_wp is not None)):
-            dist_to_light = abs(car_position - closest_light_stop_wp)
+        #if ((car_position is not None) and (closest_light_stop_wp is not None)):
+        #    dist_to_light = abs(car_position - closest_light_stop_wp)
      
 
         # Checking the status of the traffic light within the certain distance (set 100)
-        if light and dist_to_light < 100:
+        if light: # and dist_to_light < 100:
             state = self.get_light_state(light)
             return closest_light_stop_wp, state
         
